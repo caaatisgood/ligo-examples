@@ -1,0 +1,70 @@
+/**
+ *  Increment and decrement
+ * 
+ *  Commands
+ *    - Increment
+ *      `ligo run dry-run increment-decrement.jsligo -e main 'Increment(1)' 0`
+ *      -> ( LIST_EMPTY() , 1 )
+ *    - Decrement
+ *      `ligo run dry-run increment-decrement.jsligo -e main 'Decrement(1)' 0`
+ *      -> ( LIST_EMPTY() , -1 )
+ *    - Reset
+ *      `ligo run dry-run increment-decrement.jsligo -e main 'Reset()' 1`
+ *      -> ( LIST_EMPTY() , 0 )
+ *
+ *  Test
+ *    `ligo run test increment-decrement.jsligo`
+ */
+
+type Storage = int;
+type Action =
+  | ["Increment", int]
+  | ["Decrement", int]
+  | ["Reset"];
+
+const add = (storage: int, delta: int): int => storage + delta;
+const sub = (storage: int, delta: int): int => storage - delta;
+
+const main = (action: Action, storage: Storage): [list<operation>, Storage] => {
+  return [
+    list([]),
+    (match (action, {
+      Increment: (n) => add(storage, n),
+      Decrement: (n) => sub(storage, n),
+      Reset: () => 0
+    }))
+  ]
+};
+
+/* Tests for main access point */
+
+const test_initial_storage = (() => {
+  const initial_storage = 42;
+  const [taddr, _, _] = Test.originate(main, initial_storage, 0 as tez);
+  return assert(Test.get_storage(taddr) == initial_storage)
+})();
+
+const test_increment = (() => {
+  const initial_storage = 42;
+  const [taddr, _, _] = Test.originate(main, initial_storage, 0 as tez);
+  const contr = Test.to_contract(taddr);
+  const _ = Test.transfer_to_contract_exn(contr, (Increment(1)), 1 as mutez);
+  return assert(Test.get_storage(taddr) == initial_storage + 1);
+})();
+
+const test_decrement = (() => {
+  const initial_storage = 42;
+  const [taddr, _, _] = Test.originate(main, initial_storage, 0 as tez);
+  const contr = Test.to_contract(taddr);
+  const gas_cons = Test.transfer_to_contract_exn(contr, (Decrement(1)), 1 as mutez);
+  const _ = Test.log(["gas consumption", gas_cons]);
+  return assert(Test.get_storage(taddr) == initial_storage - 1);
+})
+
+const test_reset = (() => {
+  const initial_storage = 42;
+  const [taddr, _, _] = Test.originate(main, initial_storage, 0 as tez);
+  const contr = Test.to_contract(taddr);
+  const _ = Test.transfer_to_contract_exn(contr, (Reset()), 1 as mutez);
+  return assert(Test.get_storage(taddr) == 0);
+})();
