@@ -1,10 +1,10 @@
 # import "./types.jsligo" "Types"
 
-type Storage = uint;
-type Action = Types.Action;
+type Storage = unit;
+type Action = Types.action;
 type Return = [list<operation>, Storage];
 
-const dest = "REPLACE_THIS_WITH_CONTRACT_ADDRESS" as address;
+const dest = "KT1EvGiTo5EVJXgAd6nDd8BBPx1TMDZLrf9L" as address;
 
 const main = (action: Action, storage: Storage): Return => {
   const counter =
@@ -14,5 +14,5 @@ const main = (action: Action, storage: Storage): Return => {
     });
 
   const op = Tezos.transaction(action, 0 as tez, counter);
-  return [list([op]), store];
+  return [list([op]), storage];
 };
