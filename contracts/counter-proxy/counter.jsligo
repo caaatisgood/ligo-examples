@@ -1,0 +1,36 @@
+/**
+ *  Counter
+ * 
+ *  Commands
+ *    - Increment
+ *      `ligo run dry-run counter.jsligo -e main 'Increment(1)' 0`
+ *      -> ( LIST_EMPTY() , 1 )
+ *    - Decrement
+ *      `ligo run dry-run counter.jsligo -e main 'Decrement(1)' 0`
+ *      -> ( LIST_EMPTY() , -1 )
+ *    - Reset
+ *      `ligo run dry-run counter.jsligo -e main 'Reset()' 1`
+ *      -> ( LIST_EMPTY() , 0 )
+ *
+ *  Test
+ *    `ligo run test counter.jsligo`
+ */
+
+#import "types.jsligo" "Types"
+
+type Storage = int;
+type Action = Types.Action;
+
+const add = (storage: int, delta: int): int => storage + delta;
+const sub = (storage: int, delta: int): int => storage - delta;
+
+const main = (action: Action, storage: Storage): [list<operation>, Storage] => {
+  return [
+    list([]),
+    (match (action, {
+      Increment: (n) => add(storage, n),
+      Decrement: (n) => sub(storage, n),
+      Reset: () => 0
+    }))
+  ]
+};

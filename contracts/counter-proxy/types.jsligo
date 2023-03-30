@@ -1,0 +1,4 @@
+export type Action =
+  | ["Increment", int]
+  | ["Decrement", int]
+  | ["Reset"];

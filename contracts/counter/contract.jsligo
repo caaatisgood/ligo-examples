@@ -1,19 +1,19 @@
 /**
- *  Increment and decrement
+ *  Counter
  * 
  *  Commands
  *    - Increment
- *      `ligo run dry-run increment-decrement.jsligo -e main 'Increment(1)' 0`
+ *      `ligo run dry-run contract.jsligo -e main 'Increment(1)' 0`
  *      -> ( LIST_EMPTY() , 1 )
  *    - Decrement
- *      `ligo run dry-run increment-decrement.jsligo -e main 'Decrement(1)' 0`
+ *      `ligo run dry-run contract.jsligo -e main 'Decrement(1)' 0`
  *      -> ( LIST_EMPTY() , -1 )
  *    - Reset
- *      `ligo run dry-run increment-decrement.jsligo -e main 'Reset()' 1`
+ *      `ligo run dry-run contract.jsligo -e main 'Reset()' 1`
  *      -> ( LIST_EMPTY() , 0 )
  *
  *  Test
- *    `ligo run test increment-decrement.jsligo`
+ *    `ligo run test contract.jsligo`
  */
 
 type Storage = int;
