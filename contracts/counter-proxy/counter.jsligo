@@ -16,10 +16,10 @@
  *    `ligo run test counter.jsligo`
  */
 
-#import "types.jsligo" "Types"
+#import "types.jsligo" "TYPES"
 
 type Storage = int;
-type Action = Types.Action;
+type Action = TYPES.action;
 
 const add = (storage: int, delta: int): int => storage + delta;
 const sub = (storage: int, delta: int): int => storage - delta;
@@ -34,3 +34,36 @@ const main = (action: Action, storage: Storage): [list<operation>, Storage] => {
     }))
   ]
 };
+
+/* Tests for main access point */
+
+const test_initial_storage = (() => {
+  const initial_storage = 42;
+  const [taddr, _, _] = Test.originate(main, initial_storage, 0 as tez);
+  return assert(Test.get_storage(taddr) == initial_storage)
+})();
+
+const test_increment = (() => {
+  const initial_storage = 42;
+  const [taddr, _, _] = Test.originate(main, initial_storage, 0 as tez);
+  const contr = Test.to_contract(taddr);
+  const _ = Test.transfer_to_contract_exn(contr, (Increment(1)), 1 as mutez);
+  return assert(Test.get_storage(taddr) == initial_storage + 1);
+})();
+
+const test_decrement = (() => {
+  const initial_storage = 42;
+  const [taddr, _, _] = Test.originate(main, initial_storage, 0 as tez);
+  const contr = Test.to_contract(taddr);
+  const gas_cons = Test.transfer_to_contract_exn(contr, (Decrement(1)), 1 as mutez);
+  const _ = Test.log(["gas consumption", gas_cons]);
+  return assert(Test.get_storage(taddr) == initial_storage - 1);
+})
+
+const test_reset = (() => {
+  const initial_storage = 42;
+  const [taddr, _, _] = Test.originate(main, initial_storage, 0 as tez);
+  const contr = Test.to_contract(taddr);
+  const _ = Test.transfer_to_contract_exn(contr, (Reset()), 1 as mutez);
+  return assert(Test.get_storage(taddr) == 0);
+})();
