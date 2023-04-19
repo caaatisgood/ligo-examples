@@ -1,0 +1,6 @@
+type data = {
+  token_id: nat,
+  token_info: map<string, bytes>
+};
+
+type t = big_map<nat, data>;

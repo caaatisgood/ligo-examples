@@ -1,0 +1,51 @@
+#import "storage.jsligo" "Storage"
+
+// Transfer
+type atomic_transfer = {
+  to_: address,
+  token_id: Storage.token_id,
+  amount: nat,
+};
+type transfer_from = {
+  from_: address,
+  txs: list<atomic_transfer>,
+};
+type transferParam = list<transfer_from>;
+
+// Balance_of
+type request = {
+  owner: address,
+  token_id: Storage.token_id
+};
+type callback = {
+  request: request,
+  balance: nat
+};
+type balanceOfParam = {
+  requests: list<request>,
+  callback: contract<list<callback>>
+};
+
+// Update_operators
+type operator = {
+  owner: address,
+  operator: address,
+  token_id: Storage.token_id
+};
+type operatorUpdate =
+  | ["Add_operator", operator]
+  | ["Remove_operator", operator];
+type updateOperatorsParam = list<operatorUpdate>;
+
+// Mint
+type mintParam = {
+  ids: list<Storage.token_id>,
+  metas: big_map<Storage.token_id, map<string, bytes>>
+}
+
+type t =
+  | ["Transfer", transferParam]
+  | ["Balance_of", balanceOfParam]
+  | ["Update_operators", updateOperatorsParam]
+  | ["Mint", mintParam]
+  | ["Nothing"];

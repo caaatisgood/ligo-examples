@@ -1,0 +1,23 @@
+type token_id = nat;
+type owner = address;
+
+type t = big_map<token_id, owner>;
+
+const is_owner_of = (ledger: t, token_id: token_id, owner: owner): bool => {
+  const current_owner = Option.unopt(Big_map.find_opt(token_id, ledger));
+  return (current_owner == owner);
+};
+
+const assert_owner_of = (ledger: t, token_id: token_id, owner: owner): unit =>
+  assert_with_error(is_owner_of(ledger, token_id, owner), "FA2_INSUFFICIENT_BALANCE");
+
+const transfer_token_from_user_to_user = (
+  ledger: t,
+  token_id: token_id,
+  from_: address,
+  to_: address
+) => {
+  assert_owner_of(ledger, token_id, from_);
+  const ledger = Big_map.update(token_id, Some(to_), ledger);
+  return ledger;
+};

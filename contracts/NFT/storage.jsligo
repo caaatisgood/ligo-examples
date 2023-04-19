@@ -1,0 +1,46 @@
+#import "ledger.jsligo" "Ledger"
+#import "tokenMetadata.jsligo" "TokenMetadata"
+#import "operators.jsligo" "Operators"
+
+// initial storage for dry-run
+// { ledger: Big_map.empty, operators: Big_map.emtpy, token_metadata: Big_map.emtpy, token_ids: [] }
+
+type token_id = nat;
+export type t = {
+  // all_tokens: nat,
+  ledger: Ledger.t,
+  operators: Operators.t,
+  token_metadata: TokenMetadata.t,
+  token_ids: list<token_id>,
+  // token_data - royalty splits and stuff
+};
+
+const assert_token_exist = (store: t, token_id: nat): unit => {
+  const _ = Option.unopt_with_error(
+    Big_map.find_opt(token_id, store.token_metadata),
+    "FA2_TOKEN_UNDEFINED"
+  );
+};
+
+const get_operators = (store: t) => store.operators;
+const set_operators = (store: t, operators: Operators.t): t => ({
+  ...store,
+  operators: operators
+});
+
+const set_ledger = (store: t, ledger: Ledger.t): t => ({
+  ...store,
+  ledger: ledger
+});
+
+const is_owner_of = (store: t, owner: address, token_id: nat): bool =>
+  Ledger.is_owner_of(store.ledger, token_id, owner);
+
+const get_balance = (store: t, owner: address, token_id: nat): nat => {
+  assert_token_exist(store, token_id);
+  if (is_owner_of(store, owner, token_id)) {
+    return (1 as nat)
+  } else {
+    return (0 as nat)
+  }
+};

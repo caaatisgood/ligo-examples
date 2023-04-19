@@ -1,0 +1,57 @@
+type owner = address;
+type operator = address;
+type token_id = nat;
+
+type t = big_map<[owner, operator], set<token_id>>;
+
+const assert_authorisation = (operators: t, from_: address, token_id: nat): unit => {
+  const sender_ = Tezos.get_sender();
+  if (sender_ != from_) {
+    const authorized = match((Big_map.find_opt([from_, sender_], operators)), {
+      Some: (a: set<token_id>) => a,
+      None: () => Set.empty
+    });
+    if (!(Set.mem(token_id, authorized))) {
+      return failwith("FA2_NOT_OPERATOR");
+    }
+  } else {
+    return unit;
+  }
+};
+
+const assert_update_permission = (owner: owner): unit =>
+  assert_with_error(owner == Tezos.get_sender(), "The sender can only manage operators for his own token");
+
+const add_operator = (operators: t, owner: owner, operator: operator, token_id: token_id): t => {
+  if (owner == operator) {
+    return operators; // assert_authorisation always allow the owner so this case is not relevant
+  } else {
+    assert_update_permission(owner);
+    let auth_tokens = match(Big_map.find_opt([owner, operator], operators), {
+      Some: (tokens: set<token_id>) => tokens,
+      None: () => Set.empty
+    });
+    auth_tokens = Set.add(token_id, auth_tokens);
+    return Big_map.update([owner, operator], Some(auth_tokens), operators);
+  }
+};
+
+const remove_operator = (operators: t, owner: owner, operator: operator, token_id: token_id): t => {
+  if (owner == operator) {
+    return operators; // assert_authorisation always allow the owner so this case is not relevant
+  } else {
+    assert_update_permission(owner);
+    const auth_tokens: option<set<token_id>> = match(Big_map.find_opt([owner, operator], operators), {
+      Some: (tokens: set<token_id>) => {
+        const updated_tokens = Set.remove(token_id, tokens);
+        if (Set.cardinal(updated_tokens) == (0 as nat)) {
+          return None()
+        } else {
+          return Some(updated_tokens)
+        }
+      },
+      None: () => None()
+    });
+    return Big_map.update([owner, operator], auth_tokens, operators);
+  }
+};

@@ -1,0 +1,107 @@
+#import "storage.jsligo" "Storage"
+#import "parameter.jsligo" "Parameter"
+#import "operators.jsligo" "Operators"
+#import "ledger.jsligo" "Ledger"
+#import "tokenMetadata.jsligo" "TokenMetadata"
+
+type storage = Storage.t;
+type parameter = Parameter.t;
+type return_ = [list<operation>, storage];
+
+const transfer = (t: Parameter.transferParam, store: storage): return_ => {
+  const process_atomic_transfer = (from_: address): (ledger: Ledger.t, t: Parameter.atomic_transfer) => Ledger.t => {
+    return (ledger: Ledger.t, t: Parameter.atomic_transfer): Ledger.t => {
+      const { to_, token_id, amount } = t;
+      if (amount != (1 as nat)) {
+        return failwith("WRONG_AMOUNT");
+      } else {
+        Storage.assert_token_exist(store, token_id);
+        Operators.assert_authorisation(store.operators, from_, token_id);
+        const ledger = Ledger.transfer_token_from_user_to_user(ledger, token_id, from_, to_);
+        return ledger;
+      }
+    };
+  };
+  const process_single_transfer = (ledger: Ledger.t, t: Parameter.transfer_from): Ledger.t => {
+    const { from_, txs } = t;
+    const ledger = List.fold_left(process_atomic_transfer(from_), ledger, txs);
+    return ledger;
+  };
+  const ledger = List.fold_left(process_single_transfer, store.ledger, t);
+  const newStore = Storage.set_ledger(store, ledger);
+  return [list([]), newStore];
+}
+
+const balance_of = (param: Parameter.balanceOfParam, store: storage): return_ => {
+  const { requests, callback } = param;
+
+  const get_balance_info = (request: Parameter.request): Parameter.callback => {
+    const { owner, token_id } = request;
+    const balance = Storage.get_balance(store, owner, token_id);
+    return { request, balance };
+  }
+
+  const callbackParam = List.map(get_balance_info, requests);
+  const operation = Tezos.transaction(callbackParam, (0 as tez), callback);
+  return [list([operation]), store];
+}
+
+const update_operator = (param: Parameter.updateOperatorsParam, store: storage): return_ => {
+  const updator = (operators: Operators.t, update: Parameter.operatorUpdate) => match(update, {
+    Add_operator: (operator: Parameter.operator) =>
+      Operators.add_operator(operators, operator.owner, operator.operator, operator.token_id),
+    Remove_operator: (operator: Parameter.operator) =>
+      Operators.remove_operator(operators, operator.owner, operator.operator, operator.token_id)
+  });
+  let operators = Storage.get_operators(store);
+  operators = List.fold_left(updator, operators, param);
+  const newStore = Storage.set_operators(store, operators);
+  return [list([]), newStore];
+}
+
+const mint = (param: Parameter.mintParam, store: storage): return_ => {
+  // update token_ids
+  const add_id = (ids: list<nat>, id: Storage.token_id): list<nat> => list([id, ...ids]);
+  const new_token_ids: list<nat> = List.fold(add_id, param.ids, store.token_ids);
+
+  // update ledger
+  const set_token_owner = (acc: Ledger.t, elt: Storage.token_id): Ledger.t =>
+    Big_map.add(elt, Tezos.get_sender(), acc);
+  const new_ledger: Ledger.t = List.fold(set_token_owner, param.ids, store.ledger);
+
+  // update token_metadata
+  const add_token = (
+    acc: [TokenMetadata.t, big_map<Storage.token_id, map<string, bytes>>],
+    elt: Storage.token_id
+  ): [TokenMetadata.t, big_map<Storage.token_id, map<string, bytes>>] => {
+    const current_token_info: map<string, bytes> = match(Big_map.find_opt(elt, acc[1]), {
+      Some: (token_info: map<string, bytes>) => token_info,
+      None: () => ((failwith("Missing token_info")) as map<string, bytes>)
+    });
+    const current_metadata: TokenMetadata.data = {
+      token_id: elt,
+      token_info: current_token_info
+    };
+    return [Big_map.add(elt, current_metadata, acc[0]), acc[1]];
+  };
+  const [new_token_metadata, _] = List.fold(add_token, param.ids, [store.token_metadata, param.metas]);
+
+  return [
+    list([]),
+    {
+      ...store,
+      token_ids: new_token_ids,
+      ledger: new_ledger,
+      token_metadata: new_token_metadata,
+    }
+  ];
+}
+
+const main = (ep: parameter, store: storage) : return_ =>
+  match(ep, {
+    Transfer: (p: Parameter.transfer) => transfer(p, store),
+    Balance_of: (p: Parameter.balanceOfParam) => balance_of(p, store),
+    Update_operators: (p: Parameter.updateOperatorsParam) => update_operator(p, store),
+    Mint: (p: Parameter.mintParam) => mint(p, store),
+    Nothing: () => [(list([]) as list<operation>), store]
+  });
