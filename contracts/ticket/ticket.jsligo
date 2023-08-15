@@ -1,0 +1,50 @@
+type Storage = {
+  supply: int,
+  admin: address,
+  ticketMap: big_map<address, ticket<string>>,
+};
+type Action = 
+  | ["Set_Supply", int]
+  | ["Buy_Ticket"];
+type Return = [list<operation>, Storage];
+
+const setSupply = (store: Storage, supply: int): Storage => {
+  const sender: address = Tezos.get_sender();
+  if (store.admin != sender) {
+    return failwith("INSUFFICIENT_PERMISSION");
+  };
+  if (supply < 0) {
+    return failwith("INVALID_SUPPLY");
+  };
+  return {
+    ...store,
+    supply,
+  };
+};
+
+const buy = (store: Storage): Storage => {
+  if (store.supply == 0) {
+    return failwith("SOLD_OUT");
+  };
+  const sender = Tezos.get_sender();
+  match(Big_map.find_opt(sender, store.ticketMap), {
+    Some: (_) => failwith("ALREADY_BOUGHT"),
+    None: () => unit;
+  });
+  const ticket_: ticket<string> = Option.unopt(Tezos.create_ticket("a_ticket", 1 as nat));
+  return {
+    ...store,
+    supply: store.supply - 1,
+    ticketMap: Big_map.add(sender, ticket_, store.ticketMap),
+  };
+};
+
+const main = (action: Action, store: Storage): Return => {
+  return [
+    list([]),
+    (match (action, {
+      Set_Supply: (n: int) => setSupply(store, n),
+      Buy_Ticket: () => buy(store),
+    }))
+  ];
+};

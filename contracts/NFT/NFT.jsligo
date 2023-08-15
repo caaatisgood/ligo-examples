@@ -24,8 +24,7 @@ const transfer = (t: Parameter.transferParam, store: storage): return_ => {
   };
   const process_single_transfer = (ledger: Ledger.t, t: Parameter.transfer_from): Ledger.t => {
     const { from_, txs } = t;
-    const ledger = List.fold_left(process_atomic_transfer(from_), ledger, txs);
-    return ledger;
+    return List.fold_left(process_atomic_transfer(from_), ledger, txs);
   };
   const ledger = List.fold_left(process_single_transfer, store.ledger, t);
   const newStore = Storage.set_ledger(store, ledger);
@@ -97,7 +96,7 @@ const mint = (param: Parameter.mintParam, store: storage): return_ => {
   ];
 }
 
-const main = (ep: parameter, store: storage) : return_ =>
+const main = (ep: Parameter, store: storage) : return_ =>
   match(ep, {
     Transfer: (p: Parameter.transfer) => transfer(p, store),
     Balance_of: (p: Parameter.balanceOfParam) => balance_of(p, store),

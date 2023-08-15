@@ -18,6 +18,5 @@ const transfer_token_from_user_to_user = (
   to_: address
 ) => {
   assert_owner_of(ledger, token_id, from_);
-  const ledger = Big_map.update(token_id, Some(to_), ledger);
-  return ledger;
+  return Big_map.update(token_id, Some(to_), ledger);
 };
