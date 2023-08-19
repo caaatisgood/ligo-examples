@@ -3,47 +3,52 @@ type Storage = {
   admin: address,
   ticketMap: big_map<address, ticket<string>>,
 };
-type Action = 
+type Action =
   | ["Set_Supply", int]
   | ["Buy_Ticket"];
 type Return = [list<operation>, Storage];
 
-const setSupply = (store: Storage, supply: int): Storage => {
+const setSupply = ({ supply, admin, ticketMap }: Storage, newSupply: int) => {
+  const _supply = supply;
   const sender: address = Tezos.get_sender();
-  if (store.admin != sender) {
+  if (admin != sender) {
     return failwith("INSUFFICIENT_PERMISSION");
   };
-  if (supply < 0) {
+  if (newSupply < 0) {
     return failwith("INVALID_SUPPLY");
   };
   return {
-    ...store,
-    supply,
+    admin,
+    supply: newSupply,
+    ticketMap,
   };
 };
 
-const buy = (store: Storage): Storage => {
-  if (store.supply == 0) {
+const buy = ({ supply, admin, ticketMap }: Storage) => {
+  if (supply == 0) {
     return failwith("SOLD_OUT");
   };
   const sender = Tezos.get_sender();
-  match(Big_map.find_opt(sender, store.ticketMap), {
+  const [prev_opt, ticketMap] = Big_map.get_and_update(sender, None(), ticketMap);
+  match(prev_opt, {
     Some: (_) => failwith("ALREADY_BOUGHT"),
-    None: () => unit;
+    None: () => unit,
   });
   const ticket_: ticket<string> = Option.unopt(Tezos.create_ticket("a_ticket", 1 as nat));
+  const [_, updatedTicketMap] =
+    Big_map.get_and_update(sender, Some(ticket_), ticketMap);
   return {
-    ...store,
-    supply: store.supply - 1,
-    ticketMap: Big_map.add(sender, ticket_, store.ticketMap),
+    admin: admin,
+    supply: supply - 1,
+    ticketMap: updatedTicketMap,
   };
-};
+}
 
 const main = (action: Action, store: Storage): Return => {
   return [
     list([]),
     (match (action, {
-      Set_Supply: (n: int) => setSupply(store, n),
+      Set_Supply: (supply: int) => setSupply(store, supply),
       Buy_Ticket: () => buy(store),
     }))
   ];
